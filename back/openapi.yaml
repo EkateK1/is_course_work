@@ -1,0 +1,1405 @@
+openapi: 3.0.3
+info:
+  title: IS Course Work Back API
+  description: >-
+    REST API that powers the restaurant project. It exposes
+    endpoints to manage employees, dishes, ingredients, tables, orders, bills,
+    feedback, reports, and employee wallets. Most operations require a JWT that
+    encodes the employee id and position (role).
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/is_coursework/api
+    description: Local application server
+tags:
+  - name: Auth
+    description: Registration and login endpoints
+  - name: Bills
+  - name: Dishes
+  - name: Employees
+  - name: Feedback
+  - name: Ingredients
+  - name: Journal
+  - name: Orders
+  - name: Reports
+  - name: Wallets
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new employee
+      description: >-
+        Creates an employee together with an associated wallet and returns a
+        one-time numeric code that can be used to log in for the first time.
+        Only administrators may register new employees.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Employee'
+      responses:
+        '201':
+          description: Employee registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthData'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in with an employee id and code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthData'
+      responses:
+        '200':
+          description: JWT issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /bills/create:
+    post:
+      tags: [Bills]
+      summary: Create a bill for a table
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillCreationRequest'
+      responses:
+        '201':
+          description: Bill created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillCreationResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /bills/{id}:
+    get:
+      tags: [Bills]
+      summary: View bill
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: birthday
+          in: query
+          description: Whether the guest has a birthday (adds bonus points)
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Bill info with bonus points
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillLookupResponse'
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /bills/pay/{id}:
+    post:
+      tags: [Bills]
+      summary: Set status paid for a bill
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Bill paid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillPaymentResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /dish/get-all:
+    get:
+      tags: [Dishes]
+      summary: Get all dishes
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Collection of dishes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dish'
+        '500': { $ref: '#/components/responses/ServerError' }
+  /dish/create:
+    post:
+      tags: [Dishes]
+      summary: Create dish
+      description: Only administrators may create dishes.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DishWithIngredientsRequest'
+      responses:
+        '200':
+          description: Dish created
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /dish/modify-dish:
+    post:
+      tags: [Dishes]
+      summary: Update dish properties
+      description: Only administrators may modify dishes.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Dish'
+      responses:
+        '200':
+          description: Dish updated
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /dish/reset-cost:
+    post:
+      tags: [Dishes]
+      summary: Reset dish price
+      description: Only administrators may modify dish prices.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DishCostUpdate'
+      responses:
+        '200':
+          description: Price updated
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /dish/add-ingredient:
+    post:
+      tags: [Dishes]
+      summary: Attach an ingredient to a dish
+      description: Only administrators may change composed dishes.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DishIngredientData'
+      responses:
+        '200':
+          description: Ingredient added
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /dish/remove-ingredient:
+    post:
+      tags: [Dishes]
+      summary: Detach an ingredient from a dish
+      description: Only administrators may change composed dishes.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DishIngredientData'
+      responses:
+        '200':
+          description: Ingredient removed
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /dish/delete/{id}:
+    delete:
+      tags: [Dishes]
+      summary: Delete a dish
+      description: Only administrators may delete dishes.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Dish deleted
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /employee/modify:
+    post:
+      tags: [Employees]
+      summary: Update employee data
+      description: Only administrators may modify employees.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Employee'
+      responses:
+        '200':
+          description: Employee updated
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /employee/delete/{id}:
+    delete:
+      tags: [Employees]
+      summary: Remove an employee
+      description: Only administrators may delete employees.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Employee deleted
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /employee/get-all:
+    get:
+      tags: [Employees]
+      summary: Get all employees
+      description: Only administrators may view the directory.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Employees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Employee'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /feedback/create:
+    post:
+      tags: [Feedback]
+      summary: Leave feedback for a table
+      description: Guests can submit feedback without authentication.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackCreationRequest'
+      responses:
+        '201':
+          description: Feedback stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackCreationRequest'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /feedback/get-all:
+    get:
+      tags: [Feedback]
+      summary: View all feedbacks
+      description: Only administrators may read all feedback.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Feedback entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeedbackResponse'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /feedback/get-for-employee/{employeeId}:
+    get:
+      tags: [Feedback]
+      summary: View feedback that for employee
+      description: Available to administrators and to the employee themselves.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Feedback entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeedbackResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /ingredient/get-for-dish/{id}:
+    get:
+      tags: [Ingredients]
+      summary: List ingredients for a dish
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Ingredients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ingredient'
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /ingredient/create:
+    post:
+      tags: [Ingredients]
+      summary: Create an ingredient
+      description: Only administrators may create ingredients.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ingredient'
+      responses:
+        '200':
+          description: Ingredient created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /ingredient/modify:
+    post:
+      tags: [Ingredients]
+      summary: Update an ingredient
+      description: Only administrators may edit ingredients.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ingredient'
+      responses:
+        '200':
+          description: Ingredient updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /ingredient/delete/{id}:
+    delete:
+      tags: [Ingredients]
+      summary: Delete an ingredient
+      description: Only administrators may delete ingredients.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Ingredient deleted
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /ingredient/get-all:
+    get:
+      tags: [Ingredients]
+      summary: Get all ingredients
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Ingredients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ingredient'
+        '500': { $ref: '#/components/responses/ServerError' }
+  /ingredient/increase-amount:
+    post:
+      tags: [Ingredients]
+      summary: Increase ingredient amount
+      description: Only administrators may increase ingredient amount.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngredientAmountUpdate'
+      responses:
+        '200':
+          description: Amount updated
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /ingredient/reset-cost:
+    post:
+      tags: [Ingredients]
+      summary: Reset ingredient cost
+      description: Only administrators may adjust cost.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngredientCostUpdate'
+      responses:
+        '200':
+          description: Cost updated
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /journal/make-record:
+    post:
+      tags: [Journal]
+      summary: Make record in journal for table
+      description: Accessible to waiters, barmen, admins. Cooks cannot change table state.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JournalData'
+      responses:
+        '201':
+          description: Journal record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalLogId'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /journal/get-table-status/{tableNumber}:
+    get:
+      tags: [Journal]
+      summary: Get table status
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tableNumber
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/TableNumber'
+      responses:
+        '200':
+          description: Current status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableStatus'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /journal/get-employee/{tableNumber}:
+    get:
+      tags: [Journal]
+      summary: Get the waiter assigned to a table
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tableNumber
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/TableNumber'
+      responses:
+        '200':
+          description: Employee currently responsible for the table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /journal/get-all-statuses:
+    get:
+      tags: [Journal]
+      summary: Get all table statuses
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Table status map
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableStatusMap'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /journal/reset-employee:
+    post:
+      tags: [Journal]
+      summary: Reset employee for a table
+      description: Only administrators may reset employee.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JournalData'
+      responses:
+        '200':
+          description: Assignment updated
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /journal/get-last-for-hours/{hours}:
+    get:
+      tags: [Journal]
+      summary: Get journal records for last N hours
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: hours
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '200':
+          description: Journal entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JournalLogResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /order/get-orders-by-table/{tableNumber}:
+    get:
+      tags: [Orders]
+      summary: Get orders for table
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tableNumber
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/TableNumber'
+      responses:
+        '200':
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /order/create:
+    post:
+      tags: [Orders]
+      summary: Create an order for a table
+      description: >-
+        Waiters may create orders only for tables assigned to them. Administrators
+        can create orders for any table.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreationData'
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCreationResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /order/{id}:
+    get:
+      tags: [Orders]
+      summary: Get order by id
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /order/modify/{id}:
+    put:
+      tags: [Orders]
+      summary: Modify order
+      description: Only administrators may update orders.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        '200':
+          description: Order updated
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /order/delete/{id}:
+    delete:
+      tags: [Orders]
+      summary: Delete an order
+      description: Only administrators may delete orders.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Order deleted
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /order/get-all:
+    get:
+      tags: [Orders]
+      summary: Get all orders
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '500': { $ref: '#/components/responses/ServerError' }
+  /order/change-status/{id}:
+    post:
+      tags: [Orders]
+      summary: Change order status
+      description: >-
+        Waiters, barmen, cooks, and admins can transition orders according to
+        their role. Provide the new status via the query parameter.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+      responses:
+        '200':
+          description: Status updated
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /report/main/{dateStr}:
+    get:
+      tags: [Reports]
+      summary: Summary report for a date
+      description: Only administrators may view global reports.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: dateStr
+          in: path
+          description: ISO-8601 date (YYYY-MM-DD)
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MainReportData'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /report/employee-all/{dateStr}:
+    get:
+      tags: [Reports]
+      summary: All employees report for a date
+      description: Only administrators may view per-employee metrics.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: dateStr
+          in: path
+          description: ISO-8601 date (YYYY-MM-DD)
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Employee report map
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeReportMap'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /report/employee-own/{dateStr}:
+    get:
+      tags: [Reports]
+      summary: Employee self-report for a date
+      description: Requires authentication; the report is calculated for the current token holder.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: dateStr
+          in: path
+          description: ISO-8601 date (YYYY-MM-DD)
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Employee report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeReportData'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /wallet/get-balance/{employeeId}:
+    get:
+      tags: [Wallets]
+      summary: Get employee wallet balance
+      description: Only the wallet owner can fetch their balance.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletBalance'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /wallet/withdraw/{amount}:
+    get:
+      tags: [Wallets]
+      summary: Withdraw from employee wallet
+      description: Only the wallet owner can withdraw funds.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: amount
+          in: path
+          required: true
+          schema:
+            type: number
+            format: double
+      responses:
+        '200':
+          description: Withdrawal accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletWithdrawal'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/ServerError' }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Authentication required or token invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: The caller does not have the required role
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        details:
+          type: string
+      additionalProperties: false
+    AuthData:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        code:
+          type: string
+          description: Three-digit login code
+      required: [id, code]
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Bearer token to send in the Authorization header
+      required: [token]
+    BillCreationRequest:
+      type: object
+      properties:
+        tableNumber:
+          $ref: '#/components/schemas/TableNumber'
+        guestNumber:
+          type: integer
+          format: int32
+          minimum: 1
+        birthday:
+          type: boolean
+      required: [tableNumber, guestNumber]
+    BillCreationResponse:
+      type: object
+      properties:
+        billId:
+          type: integer
+          format: int64
+        bonusPoints:
+          type: integer
+          format: int32
+        message:
+          type: string
+      required: [billId, bonusPoints, message]
+    BillLookupResponse:
+      type: object
+      properties:
+        bill:
+          $ref: '#/components/schemas/Bill'
+        bonusPoints:
+          type: integer
+          format: int32
+      required: [bill, bonusPoints]
+    BillPaymentResponse:
+      type: object
+      properties:
+        billId:
+          type: integer
+          format: int64
+        message:
+          type: string
+      required: [billId, message]
+    Bill:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        time:
+          type: string
+          format: date-time
+        sum:
+          type: number
+          format: double
+        billStatus:
+          $ref: '#/components/schemas/BillStatus'
+        guestNumber:
+          type: integer
+          format: int32
+        bonusPoints:
+          type: integer
+          format: int32
+          readOnly: true
+      required: [id, time, sum, billStatus]
+    DishWithIngredientsRequest:
+      type: object
+      properties:
+        dish:
+          $ref: '#/components/schemas/Dish'
+        ingredients:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DishIngredientAmount'
+      required: [dish, ingredients]
+    DishIngredientAmount:
+      type: object
+      properties:
+        ingredientId:
+          type: integer
+          format: int64
+        amount:
+          type: number
+          format: double
+      required: [ingredientId, amount]
+    DishIngredientData:
+      allOf:
+        - $ref: '#/components/schemas/DishIngredientAmount'
+        - type: object
+          properties:
+            dishId:
+              type: integer
+              format: int64
+          required: [dishId]
+    DishCostUpdate:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        cost:
+          type: number
+          format: double
+      required: [id, cost]
+    Employee:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        positions:
+          $ref: '#/components/schemas/Positions'
+        name:
+          type: string
+        secondName:
+          type: string
+        patronymic:
+          type: string
+          nullable: true
+        birthDate:
+          type: string
+          format: date
+        sex:
+          type: string
+          maxLength: 1
+      required: [positions, name, secondName, birthDate, sex]
+    EmployeeResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        positions:
+          $ref: '#/components/schemas/Positions'
+        name:
+          type: string
+        secondName:
+          type: string
+        patronymic:
+          type: string
+          nullable: true
+      required: [id, positions, name, secondName]
+    FeedbackCreationRequest:
+      type: object
+      properties:
+        tableNumber:
+          $ref: '#/components/schemas/TableNumber'
+        rating:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+        tipAmount:
+          type: number
+          format: double
+      required: [tableNumber, rating]
+    FeedbackResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        time:
+          type: string
+          format: date-time
+        journalLog:
+          $ref: '#/components/schemas/JournalLogResponse'
+        rating:
+          type: integer
+          format: int32
+        comment:
+          type: string
+        tipAmount:
+          type: number
+          format: double
+      required: [id, time, journalLog, rating]
+    Ingredient:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        name:
+          type: string
+        price:
+          type: number
+          format: double
+          description: Price per 100 grams
+        amount:
+          type: number
+          format: double
+          description: Amount in stock (grams)
+      required: [name, price, amount]
+    IngredientAmountUpdate:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        amount:
+          type: number
+          format: double
+          description: Amount to set for the ingredient
+      required: [id, amount]
+    IngredientCostUpdate:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        cost:
+          type: number
+          format: double
+      required: [id, cost]
+    JournalData:
+      type: object
+      properties:
+        employeeId:
+          type: integer
+          format: int64
+        tableNumber:
+          $ref: '#/components/schemas/TableNumber'
+        tableStatus:
+          $ref: '#/components/schemas/TableStatus'
+      required: [employeeId, tableNumber, tableStatus]
+    JournalLogId:
+      type: integer
+      format: int64
+      description: Numeric identifier of the created journal log
+    JournalLogResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        tableStatus:
+          $ref: '#/components/schemas/TableStatus'
+        employee:
+          $ref: '#/components/schemas/EmployeeResponse'
+        tableNumber:
+          $ref: '#/components/schemas/TableNumber'
+        time:
+          type: string
+          format: date-time
+      required: [id, tableStatus, employee, tableNumber, time]
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        time:
+          type: string
+          format: date-time
+        journalLog:
+          $ref: '#/components/schemas/JournalLogResponse'
+        guestNumber:
+          type: integer
+          format: int32
+        dish:
+          $ref: '#/components/schemas/Dish'
+        orderStatus:
+          $ref: '#/components/schemas/OrderStatus'
+      required: [id, time, journalLog, dish, orderStatus]
+    OrderCreationData:
+      type: object
+      properties:
+        tableNumber:
+          $ref: '#/components/schemas/TableNumber'
+        dishId:
+          type: integer
+          format: int64
+        guestNumber:
+          type: integer
+          format: int32
+      required: [tableNumber, dishId]
+    OrderCreationResponse:
+      type: object
+      properties:
+        orderId:
+          type: integer
+          format: int64
+        message:
+          type: string
+      required: [orderId, message]
+    MainReportData:
+      type: object
+      properties:
+        ordersSum:
+          type: number
+          format: double
+        primeCostSum:
+          type: number
+          format: double
+        earnings:
+          type: number
+          format: double
+        ordersAmount:
+          type: integer
+          format: int32
+        paidOrdersAmount:
+          type: integer
+          format: int32
+        notPaidOrdersAmount:
+          type: integer
+          format: int32
+      required: [ordersSum, primeCostSum, earnings]
+    EmployeeReportData:
+      type: object
+      properties:
+        ordersAmount:
+          type: integer
+          format: int32
+        ordersSum:
+          type: number
+          format: double
+        tableAmount:
+          type: integer
+          format: int32
+          description: Count of paid tables
+        rating:
+          type: number
+          format: double
+        comments:
+          type: array
+          items:
+            type: string
+      required: [ordersAmount, ordersSum]
+    EmployeeReportMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/EmployeeReportData'
+      propertyNames:
+        pattern: '^[0-9]+$'
+    WalletBalance:
+      type: object
+      properties:
+        employeeId:
+          type: integer
+          format: int64
+        balance:
+          type: number
+          format: double
+      required: [employeeId, balance]
+    WalletWithdrawal:
+      type: object
+      properties:
+        employeeId:
+          type: integer
+          format: int64
+        amount:
+          type: number
+          format: double
+      required: [employeeId, amount]
+    TableStatusMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/TableStatus'
+    Dish:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        name:
+          type: string
+        primeCost:
+          type: number
+          format: double
+          readOnly: true
+        cost:
+          type: number
+          format: double
+        preparingTime:
+          type: integer
+          format: int32
+        isKitchen:
+          type: boolean
+          description: True for kitchen dishes, false for bar items
+      required: [name, cost, preparingTime, isKitchen]
+    BillStatus:
+      type: string
+      enum: [open, paid]
+    TableNumber:
+      type: string
+      enum: [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]
+    TableStatus:
+      type: string
+      enum: [free, occupied, not_paid, paid]
+    OrderStatus:
+      type: string
+      enum: [accepted, cooked, delivered]
+    Positions:
+      type: string
+      enum: [waiter, cook, barman, admin]

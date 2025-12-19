@@ -1,0 +1,348 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "API" {
+  class RestApplication
+
+  package "filters" {
+    class CorsFilter
+    class JwtAuthFilter
+    class EmployeeSecurityContext
+  }
+
+  package "resources" {
+    class AuthResource
+    class BillResource
+    class DishResource
+    class EmployeeResource
+    class FeedbackResource
+    class IngredientResource
+    class JournalResource
+    class OrderResource
+    class ReportResource
+    class WalletResource
+  }
+}
+
+package services {
+  class AuthService
+  class BillService
+  class CommentService
+  class DishIngredientService
+  class DishService
+  class EmployeeService
+  class FeedbackService
+  class IngredientService
+  class JournalService
+  class OrderService
+  class ReportService
+  class WalletService
+}
+
+package db {
+  class BillDAO
+  class CommentDAO
+  class DishDAO
+  class DishIngredientDAO
+  class EmployeeDAO
+  class FeedbackDAO
+  class IngredientDAO
+  class JournalDAO
+  class OrderDAO
+  class ReportDAO
+  class WalletDAO
+}
+
+package dto {
+  class AuthData
+  class BillCreationRequest
+  class DishIngredientData
+  class DishWithIngredientsRequest
+  class DishIngredientItem
+  class EmployeeResponseData
+  class FeedbackCreationRequest
+  class FeedbackResponseData
+  class JournalData
+  class JournalLogResponseData
+  class OrderCreationData
+}
+DishWithIngredientsRequest *-- DishIngredientItem
+
+package "dto.reports" as dtoReports {
+  class EmployeeReportData
+  class MainReportData
+}
+
+package validation {
+  class DishValidator
+  class EmployeeIdValidator
+  class FeedbackValidation
+  class IngredientValidator
+}
+
+package mappers {
+  class EmployeeMapper
+  class FeedbackMapper
+  class JournalLogMapper
+}
+
+package utils {
+  class JPAUtil
+  class JwtUtil
+  class PasswordUtil
+}
+
+package "model.entities" as entities {
+  class Bill {
+    BillStatus billStatus
+  }
+  class Comment
+  class Dish
+  class DishIngredient
+  class Employee {
+    Positions positions
+  }
+  class Feedback
+  class Ingredient
+  class JournalLog {
+    TableNumber tableNumber
+    TableStatus tableStatus
+  }
+  class Order {
+    OrderStatus orderStatus
+  }
+  class Wallet
+}
+
+package "model.enums" as enums {
+  enum BillStatus
+  enum OrderStatus
+  enum Positions
+  enum Sex
+  enum TableNumber
+  enum TableStatus
+}
+
+AuthResource --> AuthService
+AuthResource --> WalletService
+AuthResource ..> AuthData
+AuthResource ..> entities.Employee
+
+BillResource --> BillService
+BillResource ..> BillCreationRequest
+BillResource ..> entities.Bill
+
+DishResource --> DishService
+DishResource --> DishValidator
+DishResource --> IngredientValidator
+DishResource --> DishIngredientService
+DishResource ..> DishWithIngredientsRequest
+DishResource ..> DishIngredientData
+DishResource ..> entities.Dish
+
+EmployeeResource --> EmployeeService
+EmployeeResource ..> entities.Employee
+EmployeeResource ..> EmployeeResponseData
+EmployeeResource ..> EmployeeMapper
+
+FeedbackResource --> FeedbackService
+FeedbackResource --> FeedbackValidation
+FeedbackResource --> EmployeeIdValidator
+FeedbackResource ..> FeedbackCreationRequest
+FeedbackResource ..> FeedbackResponseData
+FeedbackResource ..> FeedbackMapper
+
+IngredientResource --> IngredientService
+IngredientResource --> IngredientValidator
+IngredientResource ..> entities.Ingredient
+
+JournalResource --> JournalService
+JournalResource --> EmployeeIdValidator
+JournalResource ..> JournalData
+JournalResource ..> JournalLogResponseData
+JournalResource ..> EmployeeResponseData
+JournalResource ..> EmployeeMapper
+JournalResource ..> JournalLogMapper
+
+OrderResource --> OrderService
+OrderResource ..> OrderCreationData
+OrderResource ..> entities.Order
+
+ReportResource --> ReportService
+ReportResource ..> dtoReports.MainReportData
+ReportResource ..> dtoReports.EmployeeReportData
+
+WalletResource --> WalletService
+
+CorsFilter ..> RestApplication
+JwtAuthFilter ..> JwtUtil
+JwtAuthFilter *-- EmployeeSecurityContext
+
+AuthService --> EmployeeDAO
+AuthService ..> JwtUtil
+AuthService ..> PasswordUtil
+AuthService ..> AuthData
+AuthService ..> entities.Employee
+
+BillService --> BillDAO
+BillService --> JournalService
+BillService ..> JournalData
+BillService ..> entities.Bill
+BillService ..> entities.Employee
+BillService ..> enums.TableNumber
+BillService ..> enums.TableStatus
+
+CommentService --> CommentDAO
+
+DishIngredientService --> IngredientDAO
+DishIngredientService --> DishDAO
+DishIngredientService --> DishIngredientDAO
+DishIngredientService ..> entities.Dish
+DishIngredientService ..> entities.Ingredient
+DishIngredientService ..> entities.DishIngredient
+DishIngredientService ..> DishWithIngredientsRequest
+DishIngredientService ..> DishIngredientItem
+
+DishService --> DishDAO
+DishService ..> entities.Dish
+
+EmployeeService --> EmployeeDAO
+EmployeeService ..> entities.Employee
+
+FeedbackService --> FeedbackDAO
+FeedbackService ..> FeedbackCreationRequest
+FeedbackService ..> entities.Feedback
+
+IngredientService --> IngredientDAO
+IngredientService ..> entities.Ingredient
+
+JournalService --> JournalDAO
+JournalService --> EmployeeDAO
+JournalService ..> entities.JournalLog
+JournalService ..> JournalData
+JournalService ..> entities.Employee
+JournalService ..> enums.TableNumber
+JournalService ..> enums.TableStatus
+
+OrderService --> OrderDAO
+OrderService --> JournalDAO
+OrderService --> JournalService
+OrderService --> DishDAO
+OrderService ..> entities.Order
+OrderService ..> entities.Dish
+OrderService ..> entities.JournalLog
+OrderService ..> enums.TableNumber
+OrderService ..> enums.TableStatus
+OrderService ..> enums.OrderStatus
+
+ReportService --> ReportDAO
+ReportService --> EmployeeDAO
+ReportService ..> dtoReports.MainReportData
+ReportService ..> dtoReports.EmployeeReportData
+ReportService ..> entities.Order
+ReportService ..> entities.Bill
+ReportService ..> entities.Feedback
+ReportService ..> enums.BillStatus
+ReportService ..> entities.Employee
+
+WalletService --> WalletDAO
+WalletService ..> entities.Wallet
+WalletService ..> entities.Employee
+
+DishValidator --> DishDAO
+DishValidator ..> entities.Dish
+
+EmployeeIdValidator --> EmployeeDAO
+EmployeeIdValidator ..> entities.Employee
+
+FeedbackValidation ..> FeedbackCreationRequest
+
+IngredientValidator --> IngredientDAO
+IngredientValidator ..> entities.Ingredient
+IngredientValidator ..> DishWithIngredientsRequest
+IngredientValidator ..> DishIngredientItem
+
+EmployeeMapper ..> entities.Employee
+EmployeeMapper ..> EmployeeResponseData
+
+FeedbackMapper ..> entities.Feedback
+FeedbackMapper ..> entities.Comment
+FeedbackMapper ..> JournalLogMapper
+FeedbackMapper ..> JournalLogResponseData
+
+JournalLogMapper ..> entities.JournalLog
+JournalLogMapper ..> EmployeeMapper
+JournalLogMapper ..> EmployeeResponseData
+
+BillDAO ..> entities.Bill
+BillDAO ..> enums.TableNumber
+BillDAO ..> enums.BillStatus
+BillDAO ..> JPAUtil
+
+CommentDAO ..> entities.Comment
+CommentDAO ..> JPAUtil
+
+DishDAO ..> entities.Dish
+DishDAO ..> JPAUtil
+
+DishIngredientDAO ..> entities.DishIngredient
+DishIngredientDAO ..> entities.Dish
+DishIngredientDAO ..> entities.Ingredient
+DishIngredientDAO ..> JPAUtil
+
+EmployeeDAO ..> entities.Employee
+EmployeeDAO ..> JPAUtil
+
+FeedbackDAO ..> entities.Feedback
+FeedbackDAO ..> FeedbackCreationRequest
+FeedbackDAO ..> JPAUtil
+
+IngredientDAO ..> entities.Ingredient
+IngredientDAO ..> JPAUtil
+
+JournalDAO ..> entities.JournalLog
+JournalDAO ..> enums.TableNumber
+JournalDAO ..> enums.TableStatus
+JournalDAO ..> JPAUtil
+
+OrderDAO ..> entities.Order
+OrderDAO ..> JPAUtil
+
+ReportDAO ..> entities.Order
+ReportDAO ..> entities.Bill
+ReportDAO ..> entities.Feedback
+ReportDAO ..> enums.TableStatus
+ReportDAO ..> JPAUtil
+
+WalletDAO ..> entities.Wallet
+WalletDAO ..> JPAUtil
+
+entities.Bill --> enums.BillStatus
+entities.Employee --> enums.Positions
+entities.Feedback --> entities.JournalLog
+entities.Feedback --> entities.Comment
+entities.JournalLog --> entities.Employee
+entities.JournalLog --> enums.TableNumber
+entities.JournalLog --> enums.TableStatus
+entities.Order --> entities.JournalLog
+entities.Order --> entities.Dish
+entities.Order --> enums.OrderStatus
+entities.DishIngredient --> entities.Dish
+entities.DishIngredient --> entities.Ingredient
+entities.Wallet --> entities.Employee
+
+BillCreationRequest --> enums.TableNumber
+FeedbackCreationRequest --> enums.TableNumber
+OrderCreationData --> enums.TableNumber
+JournalData --> enums.TableNumber
+JournalData --> enums.TableStatus
+JournalLogResponseData --> EmployeeResponseData
+JournalLogResponseData --> enums.TableStatus
+JournalLogResponseData --> enums.TableNumber
+FeedbackResponseData --> JournalLogResponseData
+EmployeeResponseData --> enums.Positions
+DishWithIngredientsRequest --> entities.Dish
+DishIngredientItem --> entities.Ingredient
+
+@enduml
